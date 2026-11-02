@@ -1,0 +1,13 @@
+---
+import Base from "../layouts/Base.astro";
+import Meter from "../components/Meter.astro";
+import { real } from "../data/worlds";
+---
+
+<Base world={real} noindex title="No such timeline">
+  <main id="main" tabindex="-1" class="lost">
+    <div class="lost__meter"><Meter value="-.------" /></div>
+    <h1>No such timeline.</h1>
+    <p><a href="/">Back to the real site</a></p>
+  </main>
+</Base>

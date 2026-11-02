@@ -1,0 +1,182 @@
+---
+import Base from "../layouts/Base.astro";
+import Meter from "./Meter.astro";
+import type { World } from "../data/worlds";
+
+interface Props {
+  world: World;
+}
+const { world } = Astro.props;
+const projectIndex = (i: number) => {
+  if (world.id === "archivist") return `ARC ${14 + i * 3}.${(i + 2) * 7}`;
+  if (world.id === "alchemist") return `Trial ${[40, 12, 3][i]}`;
+  return `3.${i + 1}`;
+};
+---
+
+<Base world={world}>
+  <header class="top">
+    <a class="top__name" href={world.path}>{world.name}</a>
+    <nav aria-label="Sections">
+      <a href="#about">{world.sectionLabels.about}</a>
+      <a href="#skills">{world.sectionLabels.skills}</a>
+      <a href="#projects">{world.sectionLabels.projects}</a>
+      {!world.fictional && <a href="#contact">Contact</a>}
+      <button type="button" class="sound" data-sound data-needs-js aria-pressed="false">Sound off</button>
+    </nav>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="hero">
+      <div class="hero__text">
+        <p class="hero__fig">{world.id === "archivist" ? "Staff page" : world.id === "alchemist" ? "Workshop notes" : "Portfolio, 2026"}</p>
+        <h1 class="hero__name" data-reveal>{world.name}</h1>
+        <p class="hero__role">{world.role}</p>
+      </div>
+
+      <div class="module">
+        <button type="button" class="module__button" id="open-console" aria-haspopup="dialog" data-needs-js>
+          <Meter value={world.meter} />
+          <span class="module__label">
+            <span>Change my past</span>
+            <span id="module-status">Open</span>
+          </span>
+        </button>
+        <noscript>
+          <Meter value={world.meter} />
+        </noscript>
+      </div>
+
+      {
+        world.id === "archivist" && (
+          <figure class="hero__object">
+            <img
+              src="/archivist/binding.webp"
+              alt="A worn nineteenth-century book bound in marbled paper with a red spine"
+              width="900"
+              height="1260"
+            />
+            <figcaption>Pending reclassification.</figcaption>
+          </figure>
+        )
+      }
+
+      {
+        world.id === "alchemist" && (
+          <figure class="hero__object">
+            <img
+              src="/alchemist/plate1.webp"
+              alt="An engraving of a chaotic alchemist's workshop, with an alchemist at his furnace and his family in disarray around him"
+              width="1300"
+              height="944"
+            />
+          </figure>
+        )
+      }
+    </section>
+
+    <section class="section" id="about" aria-labelledby="about-title">
+      <h2 id="about-title"><span class="num">01</span>{world.sectionLabels.about}</h2>
+      <div class="about">
+        {world.about.map((p) => <p>{p}</p>)}
+      </div>
+      {
+        world.id === "archivist" && (
+          <figure class="note">
+            <img
+              src="/archivist/note.webp"
+              alt="A few lines of old French handwriting in brown ink"
+              loading="lazy"
+              width="1100"
+              height="308"
+            />
+            <figcaption>Found in Box 7. Not ours. Nobody has come for it.</figcaption>
+          </figure>
+        )
+      }
+    </section>
+
+    <section class="section" id="skills" aria-labelledby="skills-title">
+      <h2 id="skills-title"><span class="num">02</span>{world.sectionLabels.skills}</h2>
+      <dl class="spec">
+        {
+          world.skills.map(([k, v]) => (
+            <div>
+              <dt>{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    {
+      world.id === "alchemist" && (
+        <figure class="plate">
+          <img
+            src="/alchemist/plate2.webp"
+            alt="An engraving of a busy distillery, with workers tending stills and furnaces"
+            loading="lazy"
+            width="1500"
+            height="1115"
+          />
+          <figcaption>The workshop on a good day.</figcaption>
+        </figure>
+      )
+    }
+
+    <section class="section" id="projects" aria-labelledby="projects-title">
+      <h2 id="projects-title"><span class="num">03</span>{world.sectionLabels.projects}</h2>
+      <ol class="projects">
+        {
+          world.projects.map((p, i) => (
+            <li class="project">
+              <p class="project__index">{projectIndex(i)}</p>
+              <div class="project__main">
+                <h3>{p.title}</h3>
+                <p>{p.summary}</p>
+                {p.links && (
+                  <p class="project__links">
+                    {p.links.map(([label, href]) => (
+                      <a href={href} rel="noopener">{label}</a>
+                    ))}
+                  </p>
+                )}
+              </div>
+              <dl class="spec spec--small">
+                {p.specs.map(([k, v]) => (
+                  <div>
+                    <dt>{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    {
+      !world.fictional && (
+        <section class="section" id="contact" aria-labelledby="contact-title">
+          <h2 id="contact-title"><span class="num">04</span>Contact</h2>
+          <ul class="contact">
+            <li><a href="mailto:shahesta0028@gmail.com">shahesta0028@gmail.com</a></li>
+            <li><a href="https://github.com/S2800-0" rel="noopener">GitHub</a></li>
+            <li><a href="https://www.linkedin.com/in/shahesta-salama-396566320/" rel="noopener">LinkedIn</a></li>
+            <li><a href="/shahesta-salama-cv.pdf">CV (PDF)</a></li>
+          </ul>
+        </section>
+      )
+    }
+  </main>
+
+  <footer class="foot">
+    <p>
+      {world.fictional
+        ? "Scans from The Metropolitan Museum of Art, Open Access (CC0)."
+        : "Hosted on AWS Amplify. The time machine is a fan homage, not affiliated with the rights holders of anything."}
+    </p>
+  </footer>
+</Base>

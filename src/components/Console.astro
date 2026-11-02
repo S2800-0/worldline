@@ -1,0 +1,59 @@
+---
+import Meter from "./Meter.astro";
+import { moments } from "../data/moments";
+
+interface Props {
+  meter: string;
+}
+const { meter } = Astro.props;
+---
+
+<dialog class="console" id="console" aria-labelledby="console-title">
+  <div class="console__frame">
+    <header class="console__head">
+      <h2 id="console-title">Change my past</h2>
+      <div class="console__tools">
+        <button type="button" class="sound" data-sound aria-pressed="false">Sound off</button>
+        <button type="button" class="console__close" data-console-close>Close</button>
+      </div>
+    </header>
+
+    <div class="console__meter">
+      <Meter value={meter} />
+    </div>
+
+    <form class="console__body" id="console-form">
+      <div class="dial" id="dial">
+        <div class="dial__marks" aria-hidden="true">
+          {
+            Array.from({ length: 25 }, (_, i) => (
+              <i class:list={[{ major: i % 12 === 0 }]} style={`--a:${-60 + i * 5}deg`} />
+            ))
+          }
+        </div>
+        <img class="dial__body" src="/console/dial.webp" alt="" width="640" height="640" draggable="false" />
+        <div class="dial__pointer" id="dial-pointer" aria-hidden="true"><i></i></div>
+      </div>
+
+      <fieldset class="moments">
+        <legend>Pick a moment</legend>
+        {
+          moments.map((m) => (
+            <label class="moment" data-moment={m.id}>
+              <input type="radio" name="moment" value={m.id} checked={m.id === "devops"} />
+              <span class="moment__date">{m.date}</span>
+              <span class="moment__name">{m.name}</span>
+            </label>
+          ))
+        }
+      </fieldset>
+
+      <div class="send">
+        <p class="send__message" id="send-message" aria-live="polite"></p>
+        <p class="send__refusal" id="send-refusal" role="status" hidden></p>
+        <button type="submit" class="send__button" id="send-button">Send</button>
+        <button type="button" class="send__replay" id="replay-ending" hidden>Replay the ending</button>
+      </div>
+    </form>
+  </div>
+</dialog>

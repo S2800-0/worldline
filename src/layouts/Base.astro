@@ -1,0 +1,80 @@
+---
+import { ClientRouter } from "astro:transitions";
+import Console from "../components/Console.astro";
+import Meter from "../components/Meter.astro";
+import { moments } from "../data/moments";
+import type { World } from "../data/worlds";
+import "../styles/global.css";
+
+interface Props {
+  world: World;
+  noindex?: boolean;
+  title?: string;
+}
+const { world, noindex = false, title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" data-world={world.id} data-meter-value={world.meter} transition:animate="none">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title ?? world.title}</title>
+    <meta
+      name="description"
+      content={world.fictional
+        ? "A fictional timeline from Shahesta Salama's portfolio. None of this happened."
+        : "Portfolio of Shahesta Salama, a computer science and AI undergraduate working on data systems and trustworthy AI."}
+    />
+    <link rel="canonical" href="/" />
+    {(world.fictional || noindex) && <meta name="robots" content="noindex" />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <noscript><style>[data-needs-js]{display:none!important}</style></noscript>
+    <ClientRouter fallback="swap" />
+    <script is:inline define:vars={{ moments }}>window.__moments = moments;</script>
+  </head>
+  <body>
+    {
+      world.fictional && (
+        <aside class="banner" aria-label="This page is fictional">
+          <span>None of this happened.</span>
+          <a href="/" data-return>Back to the real site</a>
+        </aside>
+      )
+    }
+    <slot />
+    <Console meter={world.meter} />
+    {
+      world.fictional && (
+        <div class="notice" id="converge" role="status" hidden>
+          <span>Reality's catching up.</span>
+          <button type="button" data-return-button>Back to the real site</button>
+        </div>
+      )
+    }
+    {
+      !world.fictional && (
+        <dialog class="ending" id="ending" aria-labelledby="ending-title">
+          <div class="ending__frame">
+            <Meter value={world.meter} />
+            <div class="ending__lines" id="ending-lines">
+              <p id="ending-title">That's all I've got.</p>
+              <p>In real life I entered DevOps Day on a whim, and nearly didn't.</p>
+              <p>The meter reads 1.112007 because of November 2007, when I started watching Doctor Who.</p>
+            </div>
+            <div class="ending__actions">
+              <a href="#projects" data-ending-close>See the real projects</a>
+              <button type="button" data-ending-close>Close</button>
+            </div>
+          </div>
+        </dialog>
+      )
+    }
+    <canvas id="warp" class="warp" transition:persist hidden></canvas>
+    <div id="transit" class="transit" transition:persist hidden aria-hidden="true"></div>
+    <p id="announcer" class="visually-hidden" aria-live="polite" transition:persist></p>
+    <script>
+      import "../scripts/app";
+    </script>
+  </body>
+</html>

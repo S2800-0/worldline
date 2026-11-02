@@ -1,0 +1,16 @@
+---
+interface Props {
+  value: string;
+  id?: string;
+}
+const { value, id } = Astro.props;
+const frames = value.split("").map((c) => (c === "." ? "dp" : c === "-" ? "off" : c));
+---
+
+<div class="meter" id={id} data-meter data-value={value} role="img" aria-label={value.includes("-") ? "Meter, unlit" : `Meter reading ${value}`}>
+  {
+    frames.map((frame) => (
+      <img src={`/meter/${frame}.webp`} alt="" width="360" height="670" decoding="sync" draggable="false" />
+    ))
+  }
+</div>
