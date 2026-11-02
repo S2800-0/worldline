@@ -18,6 +18,11 @@ const { meter } = Astro.props;
       </div>
     </header>
 
+    <p class="console__intro">
+      Pick a real moment from my life and send past me a message telling me not to do it. The site then shows you how that
+      life turned out. You can always come back.
+    </p>
+
     <div class="console__meter">
       <Meter value={meter} />
     </div>
@@ -36,22 +41,24 @@ const { meter } = Astro.props;
       </div>
 
       <fieldset class="moments">
-        <legend>Pick a moment</legend>
+        <legend>1. Pick a moment: turn the dial or tap one</legend>
         {
           moments.map((m) => (
             <label class="moment" data-moment={m.id}>
               <input type="radio" name="moment" value={m.id} checked={m.id === "devops"} />
               <span class="moment__date">{m.date}</span>
               <span class="moment__name">{m.name}</span>
+              <span class="moment__really">{m.really}</span>
             </label>
           ))
         }
       </fieldset>
 
       <div class="send">
+        <p class="send__label">2. Your message to past me</p>
         <p class="send__message" id="send-message" aria-live="polite"></p>
         <p class="send__refusal" id="send-refusal" role="status" hidden></p>
-        <button type="submit" class="send__button" id="send-button">Send</button>
+        <button type="submit" class="send__button" id="send-button">Send message</button>
         <button type="button" class="send__replay" id="replay-ending" hidden>Replay the ending</button>
       </div>
     </form>

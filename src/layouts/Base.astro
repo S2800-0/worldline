@@ -30,6 +30,18 @@ const { world, noindex = false, title } = Astro.props;
     {(world.fictional || noindex) && <meta name="robots" content="noindex" />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <noscript><style>[data-needs-js]{display:none!important}</style></noscript>
+    {!world.fictional && !noindex && <link rel="preload" as="image" href="/space/field.webp" />}
+    {
+      !world.fictional && !noindex && (
+        <script is:inline>
+          try {
+            if (!sessionStorage.getItem("worldline:opened") && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+              document.documentElement.classList.add("opening");
+            }
+          } catch {}
+        </script>
+      )
+    }
     <ClientRouter fallback="swap" />
     <script is:inline define:vars={{ moments }}>window.__moments = moments;</script>
   </head>
@@ -37,7 +49,7 @@ const { world, noindex = false, title } = Astro.props;
     {
       world.fictional && (
         <aside class="banner" aria-label="This page is fictional">
-          <span>None of this happened.</span>
+          <span>None of this happened. {world.whatIf}</span>
           <a href="/" data-return>Back to the real site</a>
         </aside>
       )
@@ -71,6 +83,7 @@ const { world, noindex = false, title } = Astro.props;
       )
     }
     <canvas id="warp" class="warp" transition:persist hidden></canvas>
+    <div id="transit-plate" class="transit transit-plate" transition:persist hidden aria-hidden="true"></div>
     <div id="transit" class="transit" transition:persist hidden aria-hidden="true"></div>
     <p id="announcer" class="visually-hidden" aria-live="polite" transition:persist></p>
     <script>
