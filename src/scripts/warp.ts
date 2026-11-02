@@ -1,20 +1,20 @@
 // The page-warp shader. Mode 0 twists an image of the current page into the
-// centre. Modes 1 and 2 cut through a black sheet to reveal the live new page,
-// using a real marbled-paper scan as the edge: ink for paper, a burn for the Alchemist.
+// centre, uncovering real deep space behind it. Modes 1 and 2 cut through that
+// space to reveal the live new page, using a real marbled-paper scan as the
+// edge: ink for paper, a burn for the Alchemist.
 
-const VERT = `
-attribute vec2 p;
-varying vec2 uv;
-void main() {
-  uv = vec2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
-  gl_Position = vec4(p, 0.0, 1.0);
-}`;
+import { compile, FIELD_GLSL, VERT } from "./sky";
 
 const FRAG = `
 precision highp float;
 varying vec2 uv;
 uniform sampler2D uPage;
 uniform sampler2D uMask;
+uniform float uFly;
+uniform float uDim;
+uniform float uSpeed;
+uniform float uScreen;
+${FIELD_GLSL}
 uniform float uP;
 uniform float uMode;
 uniform float uJolt;
@@ -38,6 +38,16 @@ float inside(vec2 st) {
   return e.x * e.y;
 }
 
+// Moving forward through the field: samples smear outward from the centre with speed.
+vec3 space() {
+  vec2 d = (uv - 0.5) * vec2(uAspect, 1.0) / max(uAspect, 1.0);
+  vec3 c = vec3(0.0);
+  for (float i = 0.0; i < 10.0; i += 1.0) {
+    c += fieldAt(d / (1.0 + uSpeed * 0.34 * i / 10.0), uFly);
+  }
+  return c * 0.1 * uDim;
+}
+
 void main() {
   if (uMode < 0.5) {
     vec2 s = twist(uv, uP);
@@ -46,8 +56,10 @@ void main() {
       texture2D(uPage, s + off).r,
       texture2D(uPage, s).g,
       texture2D(uPage, s - off).b
-    ) * inside(s);
-    c *= 1.0 - smoothstep(0.72, 1.0, uP);
+    );
+    float keep = inside(s) * (1.0 - smoothstep(0.8, 1.0, uP));
+    // The real site is light on black, so its picture is screened over space, not pasted.
+    c = uScreen > 0.5 ? 1.0 - (1.0 - space()) * (1.0 - c * keep) : mix(space(), c, keep);
     c *= 1.0 - uJolt * 0.35 * step(0.5, fract(uP * 37.0));
     gl_FragColor = vec4(c, 1.0);
     return;
@@ -61,40 +73,30 @@ void main() {
   float cover = smoothstep(t - 0.018, t + 0.018, field);
   float edge = smoothstep(t - 0.09, t, field) * (1.0 - smoothstep(t, t + 0.05, field));
 
-  vec3 col = vec3(0.0);
-  float alpha = cover;
+  vec3 sky = space();
+  vec3 col;
+  float alpha;
   if (uMode < 1.5) {
-    col = vec3(0.14, 0.09, 0.05) * edge;
+    col = mix(vec3(0.14, 0.09, 0.05), sky, cover);
     alpha = max(cover, edge * 0.65);
   } else {
-    col = vec3(1.0, 0.36, 0.05) * edge * 1.5;
+    col = mix(vec3(1.0, 0.36, 0.05) * 1.5, sky, cover);
     alpha = max(cover, edge);
   }
   gl_FragColor = vec4(col * alpha, alpha);
 }`;
 
 export interface Warp {
-  setPage(source: TexImageSource): void;
-  draw(mode: number, p: number, jolt: number): void;
+  setPage(source: TexImageSource, screen: boolean): void;
+  draw(mode: number, p: number, jolt: number, fly: number, speed: number, dim: number): void;
   resize(): void;
 }
 
-function compile(gl: WebGLRenderingContext, type: number, src: string) {
-  const shader = gl.createShader(type)!;
-  gl.shaderSource(shader, src);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw new Error(gl.getShaderInfoLog(shader) ?? "shader failed");
-  }
-  return shader;
-}
-
-function texture(gl: WebGLRenderingContext, unit: number, repeat: boolean) {
+function texture(gl: WebGLRenderingContext, unit: number, wrap: number) {
   const tex = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0 + unit);
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
-  const wrap = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -102,7 +104,7 @@ function texture(gl: WebGLRenderingContext, unit: number, repeat: boolean) {
   return tex;
 }
 
-export function createWarp(canvas: HTMLCanvasElement, mask: TexImageSource): Warp | null {
+export function createWarp(canvas: HTMLCanvasElement, mask: TexImageSource, field: TexImageSource): Warp | null {
   const gl = canvas.getContext("webgl", { alpha: true, premultipliedAlpha: true, antialias: false });
   if (!gl) return null;
 
@@ -126,13 +128,22 @@ export function createWarp(canvas: HTMLCanvasElement, mask: TexImageSource): War
   const uAspect = u("uAspect");
   gl.uniform1i(u("uPage"), 0);
   gl.uniform1i(u("uMask"), 1);
+  gl.uniform1i(u("uSpace"), 2);
+  const uFly = u("uFly");
+  const uDim = u("uDim");
+  const uSpeed = u("uSpeed");
+  const uScreen = u("uScreen");
 
-  texture(gl, 1, true);
+  // Both are power-of-two textures, which WebGL 1 requires for anything but clamping.
+  texture(gl, 1, gl.REPEAT);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, mask);
-  texture(gl, 0, false);
+  texture(gl, 2, gl.MIRRORED_REPEAT);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, field);
+  texture(gl, 0, gl.CLAMP_TO_EDGE);
 
   const warp: Warp = {
-    setPage(source) {
+    setPage(source, screen) {
+      gl.uniform1f(uScreen, screen ? 1 : 0);
       gl.activeTexture(gl.TEXTURE0);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
     },
@@ -143,7 +154,10 @@ export function createWarp(canvas: HTMLCanvasElement, mask: TexImageSource): War
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform1f(uAspect, canvas.width / canvas.height);
     },
-    draw(mode, p, jolt) {
+    draw(mode, p, jolt, fly, speed, dim) {
+      gl.uniform1f(uFly, fly);
+      gl.uniform1f(uDim, dim);
+      gl.uniform1f(uSpeed, speed);
       gl.uniform1f(uMode, mode);
       gl.uniform1f(uP, p);
       gl.uniform1f(uJolt, jolt);

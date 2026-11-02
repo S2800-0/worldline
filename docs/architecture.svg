@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" font-family="IBM Plex Mono, Menlo, monospace" font-size="14">
+  <title>Worldline architecture</title>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#141311"/></marker></defs>
+  <rect width="960" height="430" fill="#f4f1ea"/>
+  <g fill="#fff" stroke="#141311" stroke-width="1.5">
+    <rect x="30" y="60" width="170" height="70"/>
+    <rect x="280" y="60" width="240" height="70"/>
+    <rect x="30" y="250" width="170" height="90"/>
+    <rect x="280" y="250" width="170" height="90"/>
+    <rect x="520" y="250" width="170" height="90"/>
+    <rect x="760" y="250" width="170" height="90"/>
+  </g>
+  <g fill="#141311" text-anchor="middle">
+    <text x="115" y="92">GitHub</text><text x="115" y="112" font-size="12">S2800-0/worldline</text>
+    <text x="400" y="92">AWS Amplify Hosting</text><text x="400" y="112" font-size="12">builds Astro, serves the site</text>
+    <text x="115" y="285">Visitor's browser</text><text x="115" y="305" font-size="12">live WebGL space,</text><text x="115" y="322" font-size="12">warp and console</text>
+    <text x="365" y="285">API Gateway</text><text x="365" y="305" font-size="12">HTTP API, throttled</text><text x="365" y="322" font-size="12">10 requests per second</text>
+    <text x="605" y="285">AWS Lambda</text><text x="605" y="305" font-size="12">validates the moment,</text><text x="605" y="322" font-size="12">adds one</text>
+    <text x="845" y="285">DynamoDB</text><text x="845" y="305" font-size="12">one row of</text><text x="845" y="322" font-size="12">anonymous totals</text>
+    <text x="480" y="30" font-size="16">Worldline</text>
+    <text x="480" y="400" font-size="12">Counter infrastructure is defined in AWS CDK (infra/). If it is down, the site works normally without the count.</text>
+  </g>
+  <g stroke="#141311" stroke-width="1.5" fill="none" marker-end="url(#a)">
+    <path d="M200 95H278"/>
+    <path d="M330 130L150 248"/>
+    <path d="M200 295H278"/>
+    <path d="M450 295H518"/>
+    <path d="M690 295H758"/>
+  </g>
+  <g fill="#141311" font-size="12">
+    <text x="214" y="86">on push</text>
+    <text x="150" y="185">pages and images</text>
+    <text x="206" y="285">count</text>
+  </g>
+</svg>

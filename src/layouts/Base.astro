@@ -12,6 +12,10 @@ interface Props {
   title?: string;
 }
 const { world, noindex = false, title } = Astro.props;
+const description = world.fictional
+  ? "A fictional timeline from Shahesta Salama's portfolio. None of this happened."
+  : "Portfolio of Shahesta Salama, a computer science and AI undergraduate. Change one decision from the past and the whole site rewrites itself.";
+const shareImage = Astro.site && new URL("/og.jpg", Astro.site);
 ---
 
 <!doctype html>
@@ -22,14 +26,31 @@ const { world, noindex = false, title } = Astro.props;
     <title>{title ?? world.title}</title>
     <meta
       name="description"
-      content={world.fictional
-        ? "A fictional timeline from Shahesta Salama's portfolio. None of this happened."
-        : "Portfolio of Shahesta Salama, a computer science and AI undergraduate working on data systems and trustworthy AI."}
+      content={description}
     />
+    <meta property="og:title" content={title ?? world.title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    {shareImage && <meta property="og:image" content={shareImage} />}
+    {shareImage && <meta property="og:image:width" content="1200" />}
+    {shareImage && <meta property="og:image:height" content="630" />}
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="/" />
     {(world.fictional || noindex) && <meta name="robots" content="noindex" />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <noscript><style>[data-needs-js]{display:none!important}</style></noscript>
+    {!world.fictional && !noindex && <link rel="preload" as="image" href="/space/field.webp" />}
+    {
+      !world.fictional && !noindex && (
+        <script is:inline>
+          try {
+            if (!sessionStorage.getItem("worldline:opened") && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+              document.documentElement.classList.add("opening");
+            }
+          } catch {}
+        </script>
+      )
+    }
     <ClientRouter fallback="swap" />
     <script is:inline define:vars={{ moments }}>window.__moments = moments;</script>
   </head>
@@ -37,7 +58,7 @@ const { world, noindex = false, title } = Astro.props;
     {
       world.fictional && (
         <aside class="banner" aria-label="This page is fictional">
-          <span>None of this happened.</span>
+          <span>None of this happened. {world.whatIf}</span>
           <a href="/" data-return>Back to the real site</a>
         </aside>
       )
@@ -71,6 +92,7 @@ const { world, noindex = false, title } = Astro.props;
       )
     }
     <canvas id="warp" class="warp" transition:persist hidden></canvas>
+    <div id="transit-plate" class="transit transit-plate" transition:persist hidden aria-hidden="true"></div>
     <div id="transit" class="transit" transition:persist hidden aria-hidden="true"></div>
     <p id="announcer" class="visually-hidden" aria-live="polite" transition:persist></p>
     <script>

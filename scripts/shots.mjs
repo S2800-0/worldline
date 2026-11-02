@@ -19,8 +19,13 @@ for (const [id, path] of Object.entries(PAGES)) {
     const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor, reducedMotion: "reduce" });
     await page.goto(BASE + path, { waitUntil: "networkidle" });
     await page.evaluate(() => document.fonts.ready);
+    // The warp puts real space behind this page itself, so only the type is captured.
+    await page.addStyleTag({ content: ".sky{display:none}" });
     const png = `public/shots/${id}-${width}.png`;
-    await page.screenshot({ path: png, fullPage: true });
+    // WebP tops out at 16383 px. The warp only leaves from near the top of a long page.
+    const full = await page.evaluate(() => document.documentElement.scrollHeight);
+    const clip = { x: 0, y: 0, width, height: Math.min(full, Math.floor(16000 / deviceScaleFactor)) };
+    await page.screenshot({ path: png, fullPage: true, clip });
     execFileSync("magick", [png, "-quality", "70", png.replace(".png", ".webp")]);
     execFileSync("rm", [png]);
     await page.close();

@@ -1,7 +1,10 @@
 import Lenis from "lenis";
 import { navigate } from "astro:transitions/client";
 import { createWarp, type Warp } from "./warp";
+import { flight, startSky } from "./sky";
+import { BOX, type FieldObject } from "../data/field";
 import { sound } from "./sound";
+import { describeCounts, loadCounts, recordAttempt } from "./counter";
 
 interface Moment {
   id: string;
@@ -15,8 +18,18 @@ interface Moment {
 
 const moments = (window as unknown as { __moments: Moment[] }).__moments;
 const SHOT_WIDTHS = [390, 820, 1440];
-const WARP_MS = 950;
+const WARP_MS = 900;
+const VOYAGE_MS = 950;
 const ARRIVE_MS = 900;
+const TRIP_MS = WARP_MS + VOYAGE_MS + ARRIVE_MS;
+const LAND_MS = 520;
+const WORLD_FONTS = [
+  '40px "Libre Caslon Text"',
+  'italic 20px "Libre Caslon Text"',
+  '16px "Courier Prime"',
+  '40px "IM Fell English"',
+  'italic 20px "IM Fell English"',
+];
 const DIGITS = "0123456789";
 
 const TOTAL_TIMELINES = 2;
@@ -119,6 +132,11 @@ function openConsole() {
   dialog.showModal();
   preloadDigits();
   loadShot();
+  loadMask();
+  loadField();
+  loadCounts().then(renderCount);
+  // A late font would rewrap the next world's hero and move its meter mid-landing.
+  for (const font of WORLD_FONTS) document.fonts.load(font).catch(() => {});
   if (reducedMotion()) {
     dialog.animate({ opacity: [0, 1] }, { duration: 160, easing: "ease" });
     return;
@@ -132,8 +150,16 @@ function selected(): Moment {
   return moments.find((m) => m.id === value) ?? moments[1];
 }
 
+function renderCount() {
+  const line = document.querySelector<HTMLElement>("#send-count");
+  if (!line) return;
+  line.textContent = describeCounts(selected().id);
+  line.hidden = !line.textContent;
+}
+
 function renderMoment() {
   const moment = selected();
+  renderCount();
   const dial = document.querySelector<HTMLElement>("#dial");
   dial?.style.setProperty("--dial-angle", `${moment.angle}deg`);
   document.querySelector("#send-message")!.textContent = moment.message;
@@ -220,31 +246,39 @@ function viewportCrop(img: HTMLImageElement) {
   const ratio = img.naturalWidth / innerWidth;
   ctx.fillStyle = getComputedStyle(document.documentElement).backgroundColor;
   ctx.fillRect(0, 0, crop.width, crop.height);
-  const h = Math.min(innerHeight * ratio, img.naturalHeight - scrollY * ratio);
+  const h = Math.max(1, Math.min(innerHeight * ratio, img.naturalHeight - scrollY * ratio));
   ctx.drawImage(img, 0, scrollY * ratio, img.naturalWidth, h, 0, 0, crop.width, h / (ratio / scale));
   return crop;
 }
 
 let warp: Warp | null | undefined;
-let maskLoaded: Promise<HTMLImageElement | null> | null = null;
+const textures = new Map<string, Promise<HTMLImageElement | null>>();
 
-function loadMask() {
-  maskLoaded ??= new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = "/console/mask.webp";
-  });
-  return maskLoaded;
+function loadTexture(src: string) {
+  if (!textures.has(src)) {
+    textures.set(
+      src,
+      new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = src;
+      }),
+    );
+  }
+  return textures.get(src)!;
 }
+
+const loadMask = () => loadTexture("/console/mask.webp");
+const loadField = () => loadTexture("/space/field.webp");
 
 async function getWarp() {
   if (warp !== undefined) return warp;
-  const mask = await loadMask();
+  const [mask, field] = await Promise.all([loadMask(), loadField()]);
   const canvas = document.querySelector<HTMLCanvasElement>("#warp");
-  if (!mask || !canvas) return (warp = null);
+  if (!mask || !field || !canvas) return (warp = null);
   try {
-    warp = createWarp(canvas, mask);
+    warp = createWarp(canvas, mask, field);
   } catch {
     warp = null;
   }
@@ -318,14 +352,21 @@ async function travel(path: string, label: string) {
   const transit = document.querySelector<HTMLElement>("#transit")!;
   const meterMarkup = document.querySelector("#console .meter")!.cloneNode(true) as HTMLElement;
   transit.replaceChildren(meterMarkup);
+  // The tubes are screened so space shows through them. Over the page they need
+  // this black plate behind them, which gives way as the page does.
+  const plate = document.querySelector<HTMLElement>("#transit-plate")!;
 
   const source = document.querySelector("#console .meter")!.getBoundingClientRect();
 
   engine.resize();
-  engine.setPage(viewportCrop(image));
-  engine.draw(0, 0, 0);
+  engine.setPage(viewportCrop(image), currentWorld() === "real");
+  engine.draw(0, 0, 0, flight.fly, 0, flight.dim);
   canvas.hidden = false;
   transit.hidden = false;
+  plate.hidden = false;
+  plate.style.width = `${transit.offsetWidth}px`;
+  plate.style.height = `${transit.offsetHeight}px`;
+  plate.style.opacity = "1";
   dialog?.close();
 
   // The meter is the one thing that survives the trip, so it glides from the
@@ -333,60 +374,97 @@ async function travel(path: string, label: string) {
   const end = transit.getBoundingClientRect();
   const dx = source.left + source.width / 2 - (end.left + end.width / 2);
   const dy = source.top + source.height / 2 - (end.top + end.height / 2);
-  transit.animate(
-    {
-      transform: [
-        `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(${source.width / end.width})`,
-        "translate(-50%, -50%)",
-      ],
-    },
-    { duration: 620, easing: "cubic-bezier(0.77, 0, 0.175, 1)" },
-  );
+  for (const el of [transit, plate]) {
+    el.animate(
+      {
+        transform: [
+          `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(${source.width / end.width})`,
+          "translate(-50%, -50%)",
+        ],
+      },
+      { duration: 620, easing: "cubic-bezier(0.77, 0, 0.175, 1)" },
+    );
+  }
 
-  const spin = spinMeter(meterMarkup, targetMeter(html), WARP_MS + ARRIVE_MS * 0.5);
-  sound.whoosh((WARP_MS + ARRIVE_MS) / 1000);
+  const spin = spinMeter(meterMarkup, targetMeter(html), WARP_MS + VOYAGE_MS - 80);
+  sound.whoosh(TRIP_MS / 1000);
+
+  // One continuous flight through the field across all three phases.
+  const start = performance.now();
+  const startFly = flight.fly;
+  const startDim = flight.dim;
+  flight.held = true;
+  const fly = () => {
+    const t = Math.min(1, (performance.now() - start) / TRIP_MS);
+    flight.fly = startFly + Math.log2(1 + 2.1 * t * t * (3 - 2 * t));
+    flight.dim = startDim + (1 - startDim) * Math.min(1, t * 4);
+    return { at: flight.fly, speed: Math.sin(Math.PI * t) ** 2, dim: flight.dim };
+  };
 
   await animate(
     WARP_MS,
     (t) => {
       const p = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
       const jolt = t < 0.22 ? 1 - t / 0.22 : 0;
-      engine.draw(0, p, jolt);
+      const { at, speed, dim } = fly();
+      engine.draw(0, p, jolt, at, speed, dim);
+      plate.style.opacity = String(Math.max(0, Math.min(1, (0.6 - p) / 0.3)));
     },
     () => skip,
   );
-  engine.draw(0, 1, 0);
+  plate.hidden = true;
 
+  // Swap the page while nothing but space is showing.
+  const voyage = animate(
+    VOYAGE_MS,
+    () => {
+      const { at, speed, dim } = fly();
+      engine.draw(0, 1, 0, at, speed, dim);
+    },
+    () => skip,
+  );
   const loaded = afterSwap();
   await navigate(path);
   await loaded;
   settleFocus(label);
 
-  const mode = document.documentElement.dataset.world === "alchemist" ? 2 : 1;
-  revealHeadline();
-  await animate(ARRIVE_MS, (t) => engine.draw(mode, 1 - (1 - t) ** 2.4, 0), () => skip);
-  await spin;
-  canvas.hidden = true;
-
-  // Hand the meter back: it settles exactly where the new page's meter sits.
+  // Hand the meter back while there is still only space: it settles exactly
+  // where the new page's meter sits, and the new world breaks through around it.
+  const landing = start + WARP_MS + VOYAGE_MS - LAND_MS - performance.now();
+  if (landing > 0 && !skip) await new Promise((resolve) => setTimeout(resolve, landing));
   const home = document.querySelector(".module .meter")?.getBoundingClientRect();
   if (home && !skip) {
     const from = transit.getBoundingClientRect();
     const toX = home.left + home.width / 2 - (from.left + from.width / 2);
     const toY = home.top + home.height / 2 - (from.top + from.height / 2);
-    await transit.animate(
+    transit.animate(
       {
         transform: [
           "translate(-50%, -50%)",
           `translate(-50%, -50%) translate(${toX}px, ${toY}px) scale(${home.width / from.width})`,
         ],
       },
-      { duration: 520, easing: "cubic-bezier(0.77, 0, 0.175, 1)", fill: "forwards" },
-    ).finished;
+      { duration: LAND_MS, easing: "cubic-bezier(0.77, 0, 0.175, 1)", fill: "forwards" },
+    );
   }
+  await voyage;
+
+  const mode = document.documentElement.dataset.world === "alchemist" ? 2 : 1;
+  revealHeadline();
+  await animate(
+    ARRIVE_MS,
+    (t) => {
+      const { at, speed, dim } = fly();
+      engine.draw(mode, 1 - (1 - t) ** 2.4, 0, at, speed, dim);
+    },
+    () => skip,
+  );
+  await spin;
+  canvas.hidden = true;
   transit.getAnimations().forEach((a) => a.cancel());
   transit.hidden = true;
   transit.replaceChildren();
+  flight.held = false;
   lenis?.start();
   travelling = false;
 }
@@ -411,14 +489,20 @@ function showEnding() {
   writeList(local, SEEN_KEY, ["seen"]);
   // Restart the line animations on replay.
   const lines = ending.querySelector("#ending-lines");
-  lines?.replaceWith(lines.cloneNode(true));
+  const fresh = lines?.cloneNode(true) as HTMLElement | undefined;
+  if (fresh && readList(local, BOX_KEY).length && fresh.children.length < 4) {
+    const line = document.createElement("p");
+    line.textContent = "You also found the box. It isn't on my CV.";
+    fresh.append(line);
+  }
+  if (fresh) lines?.replaceWith(fresh);
   ending.showModal();
   updateStatus();
 }
 
 function updateStatus() {
   const status = document.querySelector("#module-status");
-  if (status) status.textContent = found.size ? `Found ${found.size} of ${TOTAL_TIMELINES}` : "Open";
+  if (status) status.textContent = found.size ? `Found ${found.size} of ${TOTAL_TIMELINES} other lives` : `${TOTAL_TIMELINES} other lives to find`;
   const replay = document.querySelector<HTMLElement>("#replay-ending");
   if (replay) replay.hidden = !(endingSeen && currentWorld() === "real");
 }
@@ -443,19 +527,26 @@ function updateSoundButtons() {
 
 /* Headline */
 
+function splitWords(el: HTMLElement) {
+  const text = el.textContent ?? "";
+  el.setAttribute("aria-label", text);
+  el.innerHTML = text
+    .trim()
+    .split(/\s+/)
+    .map((word) => `<span class="reveal-line" aria-hidden="true"><span>${word}</span></span>`)
+    .join(" ");
+  const lines = [...el.querySelectorAll<HTMLElement>(".reveal-line")];
+  lines.forEach((line, i) => {
+    (line.firstElementChild as HTMLElement).style.transitionDelay = `${120 + i * 90}ms`;
+  });
+  return lines;
+}
+
 function revealHeadline() {
   const h1 = document.querySelector<HTMLElement>("[data-reveal]");
   if (!h1 || reducedMotion() || h1.querySelector(".reveal-line")) return;
-  const text = h1.textContent ?? "";
-  h1.setAttribute("aria-label", text);
-  h1.innerHTML = text
-    .split(" ")
-    .map((word) => `<span class="reveal-line" aria-hidden="true"><span>${word}</span></span>`)
-    .join(" ");
-  h1.querySelectorAll<HTMLElement>(".reveal-line").forEach((line, i) => {
-    (line.firstElementChild as HTMLElement).style.transitionDelay = `${120 + i * 90}ms`;
-    requestAnimationFrame(() => requestAnimationFrame(() => line.classList.add("is-in")));
-  });
+  const lines = splitWords(h1);
+  requestAnimationFrame(() => requestAnimationFrame(() => lines.forEach((line) => line.classList.add("is-in"))));
 }
 
 /* Scroll */
@@ -472,10 +563,211 @@ function setupScroll() {
   requestAnimationFrame(raf);
 }
 
+/* The real site: live space, the opening, type that arrives as you scroll */
+
+let stopSky: (() => void) | null = null;
+
+async function setupSky() {
+  const canvas = document.querySelector<HTMLCanvasElement>("#sky");
+  if (!canvas || reducedMotion()) return;
+  const field = await loadField();
+  // The page may have changed while the image loaded.
+  if (!field || !canvas.isConnected) return;
+  try {
+    stopSky = startSky(canvas, field, showSight);
+    const hint = document.querySelector<HTMLElement>("#sky-hint");
+    if (hint) {
+      hint.textContent = matchMedia("(hover: hover)").matches
+        ? "Move your cursor across the sky: it bends the light. A few things are hiding in there."
+        : "Drag across the sky: your finger bends the light. A few things are hiding in there.";
+      hint.hidden = false;
+    }
+  } catch {
+    // The CSS background behind the canvas stays.
+  }
+}
+
+document.addEventListener("astro:before-swap", () => {
+  stopSky?.();
+  stopSky = null;
+});
+
+const BOX_KEY = "worldline:box";
+let sighted: FieldObject | null = null;
+let noteTimer: ReturnType<typeof setTimeout> | undefined;
+
+function showSight(object: FieldObject | null, x: number, y: number) {
+  const note = document.querySelector<HTMLElement>("#sky-note");
+  if (!note) return;
+  if (object) {
+    clearTimeout(noteTimer);
+    noteTimer = undefined;
+    if (object !== sighted) {
+      sighted = object;
+      note.textContent = object.note;
+      note.classList.add("is-on");
+      sound.detent();
+      if (object === BOX) writeList(local, BOX_KEY, ["found"]);
+      // It stays put once placed, so it can be read while the mass moves on.
+      const flip = x > innerWidth - 340;
+      const left = flip ? x - note.offsetWidth - 28 : x + 28;
+      const top = Math.max(12, Math.min(innerHeight - note.offsetHeight - 12, y - 20));
+      note.style.left = `${Math.max(12, Math.round(left))}px`;
+      note.style.top = `${Math.round(top)}px`;
+    }
+  } else if (sighted && !noteTimer) {
+    noteTimer = setTimeout(() => {
+      sighted = null;
+      noteTimer = undefined;
+      note.classList.remove("is-on");
+    }, 1600);
+  }
+}
+
+// Clicking the box goes to the one moment that can't be changed.
+window.addEventListener("click", (e) => {
+  if (sighted !== BOX || (e.target as Element).closest("a, button, input, label, dialog")) return;
+  const fixed = document.querySelector<HTMLInputElement>('input[name="moment"][value="fixed"]');
+  if (!fixed) return;
+  fixed.checked = true;
+  renderMoment();
+  openConsole();
+});
+
+async function playOpening() {
+  const root = document.documentElement;
+  if (!root.classList.contains("opening")) return;
+  try {
+    sessionStorage.setItem("worldline:opened", "1");
+  } catch {}
+  const overlay = document.querySelector<HTMLElement>("#opening");
+  const transit = document.querySelector<HTMLElement>("#transit");
+  const home = document.querySelector<HTMLElement>(".module .meter");
+  if (!overlay || !transit || !home) return root.classList.remove("opening");
+
+  const meter = home.cloneNode(true) as HTMLElement;
+  meter.querySelectorAll("img").forEach((img, i) => {
+    if (i !== 1) img.src = "/meter/off.webp";
+  });
+  transit.replaceChildren(meter);
+  transit.hidden = false;
+  await Promise.race([loadField(), new Promise((resolve) => setTimeout(resolve, 1200))]);
+  await spinMeter(meter, home.dataset.value!, 1000);
+
+  const to = home.getBoundingClientRect();
+  const from = transit.getBoundingClientRect();
+  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+  const easing = "cubic-bezier(0.77, 0, 0.175, 1)";
+  flight.kick = 2.2;
+  revealHeadline();
+  overlay.animate({ opacity: [1, 0] }, { duration: 700, easing, fill: "forwards" });
+  await transit.animate(
+    {
+      transform: ["translate(-50%, -50%)", `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(${to.width / from.width})`],
+    },
+    { duration: 700, easing, fill: "forwards" },
+  ).finished;
+
+  root.classList.remove("opening");
+  transit.getAnimations().forEach((a) => a.cancel());
+  transit.hidden = true;
+  transit.replaceChildren();
+}
+
+function lightAge(years: number) {
+  const short = (n: number) => (n < 10 ? n.toFixed(1).replace(".0", "") : Math.round(n).toString());
+  if (years < 1000) return `${Math.round(years)} ${Math.round(years) === 1 ? "year" : "years"}`;
+  if (years < 1e6) return `${short(years / 1e3)} thousand years`;
+  if (years < 1e9) return `${short(years / 1e6)} million years`;
+  return `${short(years / 1e9)} billion years`;
+}
+
+function setupType() {
+  if (reducedMotion()) return;
+  const name = document.querySelector<HTMLElement>(".sp-hero__name");
+  const meter = document.querySelector<HTMLElement>(".sp-hero .meter");
+  const quiet = document.querySelectorAll<HTMLElement>(".sp-hero .module__label, .sp-hero__role, .sp-hero__what");
+  const lookback = document.querySelector<HTMLElement>("#lookback");
+  if (lookback) lookback.hidden = false;
+  document.querySelectorAll<HTMLElement>("[data-lines]").forEach((el) => {
+    const lines = splitWords(el);
+    const seen = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        lines.forEach((line) => line.classList.add("is-in"));
+        seen.disconnect();
+      },
+      { threshold: 0.2 },
+    );
+    seen.observe(el);
+  });
+
+  // The statement lights up word by word as it passes through the screen.
+  const statements = [...document.querySelectorAll<HTMLElement>("[data-words]")].map((el) => {
+    el.innerHTML = (el.textContent ?? "")
+      .trim()
+      .split(/\s+/)
+      .map((word) => `<span class="word">${word}</span>`)
+      .join(" ");
+    return { el, words: [...el.querySelectorAll<HTMLElement>(".word")] };
+  });
+  if (!statements.length) return;
+  let queued = false;
+  // The name and the meter pass the camera as the flight begins.
+  const passHero = () => {
+    const t = Math.min(1, scrollY / (innerHeight * 0.9));
+    const fade = (from: number, to: number) => 1 - Math.max(0, Math.min(1, (t - from) / (to - from)));
+    if (name) {
+      name.style.transform = t ? `scale(${1 + 5 * t * t})` : "";
+      name.style.opacity = String(fade(0.35, 0.85));
+    }
+    if (meter) {
+      meter.style.transform = t ? `scale(${1 + 3.4 * t * t})` : "";
+      meter.style.opacity = String(fade(0.4, 0.9));
+    }
+    quiet.forEach((el) => (el.style.opacity = String(fade(0, 0.3))));
+  };
+  const readLookback = () => {
+    if (!lookback) return;
+    const x = Math.min(1, scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight));
+    lookback.classList.toggle("is-on", scrollY > innerHeight * 0.2);
+    lookback.textContent = `Further out is further back: this light left ${lightAge(10 ** (x * Math.log10(13e9)))} ago`;
+  };
+  // The fixed nav steps aside while reading, and returns on the way back up.
+  const nav = document.querySelector<HTMLElement>(".sp-top");
+  let lastY = scrollY;
+  const paint = () => {
+    queued = false;
+    nav?.classList.toggle("is-tucked", scrollY > innerHeight && scrollY > lastY);
+    lastY = scrollY;
+    passHero();
+    readLookback();
+    for (const { el, words } of statements) {
+      const box = el.getBoundingClientRect();
+      const p = (innerHeight * 0.85 - box.top) / (box.height + innerHeight * 0.3);
+      words.forEach((word, i) => {
+        const lit = Math.max(0, Math.min(1, (p * words.length - i) / 4));
+        word.style.opacity = String(0.22 + 0.78 * lit);
+      });
+    }
+  };
+  paint();
+  const onScroll = () => {
+    if (!queued) requestAnimationFrame(paint);
+    queued = true;
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  document.addEventListener("astro:before-swap", () => window.removeEventListener("scroll", onScroll), { once: true });
+}
+
 /* Page setup, run on every page swap */
 
 function setup() {
   setupScroll();
+  setupSky();
+  playOpening();
+  setupType();
   document.querySelector("#open-console")?.addEventListener("click", openConsole);
   document.querySelector("[data-console-close]")?.addEventListener("click", () => {
     document.querySelector<HTMLDialogElement>("#console")?.close();
@@ -493,6 +785,7 @@ function setup() {
   document.querySelector("#console-form")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const moment = selected();
+    if (!(moment.target && moment.target === location.pathname)) recordAttempt(moment.id).then(renderCount);
     if (moment.refusal) {
       const refusal = document.querySelector<HTMLElement>("#send-refusal")!;
       refusal.hidden = false;

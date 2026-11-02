@@ -26,11 +26,11 @@
 }
 
 html[data-world="real"] {
-  --bg: #e9e7e1;
-  --ink: #141311;
-  --muted: #5f5c55;
-  --rule: #14131133;
-  --accent: #b23c05;
+  --bg: #000;
+  --ink: #f4f1ea;
+  --muted: #c9c4ba;
+  --rule: #ffffff30;
+  --accent: #ff6a1f;
   --display: "IBM Plex Sans", sans-serif;
   --body: "IBM Plex Sans", sans-serif;
   --label: "IBM Plex Mono", monospace;
@@ -237,7 +237,7 @@ main:focus {
   width: 100%;
   padding: 0;
   border: 0;
-  background: var(--panel);
+  background: #000 url("/space/dim.webp") center / cover;
   color: var(--panel-ink);
   font: inherit;
   text-align: left;
@@ -256,7 +256,12 @@ main:focus {
   gap: 16px;
   padding: 12px 14px;
   border-top: 1px solid #ffffff22;
+  background: #000;
   font: 400 0.82rem/1.3 "IBM Plex Mono", monospace;
+}
+
+.module .meter {
+  background: transparent;
 }
 
 .module__label span:first-child {
@@ -421,6 +426,11 @@ main:focus {
 
 /* The Archivist */
 
+html[data-world="archivist"] .hero__name,
+html[data-world="alchemist"] .hero__name {
+  max-width: min-content;
+}
+
 html[data-world="archivist"] .hero__name {
   font-weight: 400;
   font-size: clamp(2.7rem, 10.6vw, 7rem);
@@ -481,7 +491,7 @@ html[data-world="archivist"] .spec dd {
   margin: 0;
   padding: 0;
   border: 0;
-  background: #0b0a09;
+  background: #000 url("/space/dim.webp") center / cover;
   color: var(--panel-ink);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -622,7 +632,7 @@ html[data-world="archivist"] .spec dd {
 .moments legend {
   margin-bottom: 8px;
   font: 400 0.8rem/1.3 "IBM Plex Mono", monospace;
-  color: #9a948a;
+  color: #c4bdb1;
 }
 
 .moment {
@@ -649,7 +659,7 @@ html[data-world="archivist"] .spec dd {
 
 .moment__date {
   font: 400 0.8rem/1.3 "IBM Plex Mono", monospace;
-  color: #9a948a;
+  color: #c4bdb1;
 }
 
 .moment:has(input:checked) .moment__name {
@@ -706,7 +716,7 @@ html[data-world="archivist"] .spec dd {
 .send__button:disabled {
   background: transparent;
   border-color: #6b665d;
-  color: #9a948a;
+  color: #c4bdb1;
   cursor: not-allowed;
 }
 
@@ -740,8 +750,19 @@ html[data-world="archivist"] .spec dd {
   background: transparent;
 }
 
+#transit {
+  mix-blend-mode: screen;
+}
+
+.transit-plate {
+  background: #000;
+}
+
 .reveal-line {
-  display: block;
+  display: inline-block;
+  vertical-align: top;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
   overflow: clip;
 }
 
@@ -838,7 +859,7 @@ html[data-world="alchemist"] .plate img {
 
   html[data-world="alchemist"] .module {
     grid-column: 8 / -1;
-    align-self: end;
+    align-self: start;
   }
 }
 
@@ -895,7 +916,7 @@ html[data-world="alchemist"] .plate img {
   padding: 0;
   border: 0;
   background: none;
-  color: #9a948a;
+  color: #c4bdb1;
   font: 400 0.82rem/1.3 "IBM Plex Mono", monospace;
   text-decoration: underline;
   text-underline-offset: 0.2em;
@@ -963,7 +984,7 @@ html[data-world="alchemist"] .plate img {
   margin: 0;
   padding: 0;
   border: 0;
-  background: #000;
+  background: #000 url("/space/dim.webp") center / cover;
   color: #f4efe6;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1004,6 +1025,10 @@ html[data-world="alchemist"] .plate img {
 
 .ending__lines > :nth-child(3) {
   animation-delay: 1400ms;
+}
+
+.ending__lines > :nth-child(4) {
+  animation-delay: 2100ms;
 }
 
 .ending__actions {
@@ -1069,4 +1094,523 @@ html[data-world="alchemist"] .plate img {
   from {
     opacity: 0;
   }
+}
+
+/* The real site: light on live space */
+
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100vw;
+  height: 100lvh;
+  background: #000 url("/space/dim.webp") center / cover;
+  pointer-events: none;
+}
+
+.opening-veil {
+  display: none;
+}
+
+html.opening .opening-veil {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  background: #000;
+  animation: opening-failsafe 0s linear 6s forwards;
+}
+
+html.opening .module .meter {
+  visibility: hidden;
+  animation: opening-show 0s linear 6s forwards;
+}
+
+@keyframes opening-failsafe {
+  to {
+    visibility: hidden;
+  }
+}
+
+@keyframes opening-show {
+  to {
+    visibility: visible;
+  }
+}
+
+.sp-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 24px;
+  padding: 14px var(--gutter);
+  color: #fff;
+  font: 400 0.8rem/1.4 var(--label);
+  mix-blend-mode: difference;
+}
+
+.sp-top a {
+  text-decoration: none;
+}
+
+.sp-top nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 18px;
+}
+
+.sp-top nav a,
+.sp-top__name {
+  display: inline-block;
+  padding: 6px 0;
+}
+
+.sp-top .sound {
+  color: inherit;
+}
+
+@media (min-width: 720px) {
+  .sp-top {
+    position: fixed;
+  }
+}
+
+.sp-hero {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 24px;
+  min-height: 100svh;
+  padding: 92px var(--gutter) 20px;
+}
+
+.sp-hero .module {
+  grid-row: 1;
+  grid-column: auto;
+  align-self: center;
+  justify-self: center;
+  width: min(100%, 880px);
+}
+
+html[data-world="real"] .module__button {
+  background: transparent;
+}
+
+html[data-world="real"] .module__label {
+  border: 0;
+  background: transparent;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 0 0;
+  font-size: 0.95rem;
+}
+
+html[data-world="real"] .module__label > span {
+  padding: 3px 8px;
+  background: #000;
+}
+
+.sp-hero__role {
+  margin-bottom: 14px;
+  max-width: 62ch;
+  font: 400 0.92rem/1.7 var(--label);
+}
+
+.sp-hero__role span {
+  padding: 3px 8px;
+  background: #000;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.sp-hero__name {
+  font: 300 20.5vw / 0.92 var(--display);
+  letter-spacing: -0.035em;
+}
+
+@media (min-width: 720px) {
+  .sp-hero__name {
+    font-size: 12.3vw;
+    white-space: nowrap;
+  }
+}
+
+.sp-section {
+  padding: 16vh var(--gutter);
+  scroll-margin-top: 40px;
+}
+
+.sp-label {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 40px;
+  font: 400 0.82rem/1.4 var(--label);
+  color: var(--muted);
+}
+
+.sp-label i {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.sp-statement {
+  max-width: 21em;
+  font-size: clamp(2.1rem, 6.2vw, 6.2rem);
+  font-weight: 300;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+
+.sp-statement + .sp-statement {
+  margin-top: 0.7em;
+}
+
+.sp-skills > div {
+  display: grid;
+  gap: 6px 32px;
+  padding: 26px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.sp-skills dt {
+  font: 400 0.82rem/1.4 var(--label);
+  color: var(--muted);
+}
+
+.sp-skills dd {
+  font-size: clamp(1.45rem, 3.7vw, 3.5rem);
+  font-weight: 300;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 720px) {
+  .sp-skills > div {
+    grid-template-columns: 11rem 1fr;
+  }
+}
+
+.sp-project {
+  padding: 8vh 0 14vh;
+  border-top: 1px solid var(--rule);
+}
+
+.sp-project__index {
+  font: 400 0.82rem/1.4 var(--label);
+  color: var(--accent);
+}
+
+.sp-project h3 {
+  margin: 18px 0 8vh;
+  font-size: clamp(3rem, 11.4vw, 13rem);
+  font-weight: 300;
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+}
+
+.sp-project__body {
+  display: grid;
+  gap: 40px 32px;
+}
+
+.sp-big {
+  font-size: clamp(2.6rem, 7.4vw, 7.6rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--neon);
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-big-label {
+  margin-top: 12px;
+  font: 400 0.82rem/1.4 var(--label);
+  color: var(--muted);
+}
+
+.sp-project__text > p:first-child {
+  max-width: 46ch;
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.sp-project .spec {
+  margin-top: 26px;
+}
+
+.sp-project .project__links {
+  margin-top: 18px;
+}
+
+@media (min-width: 1000px) {
+  .sp-project__body {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.sp-contact a {
+  display: block;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+  font-size: clamp(1.6rem, 6.6vw, 7.4rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition: color 150ms ease;
+}
+
+.word {
+  transition: opacity 120ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    transition: none;
+  }
+}
+
+html[data-world="real"] .sp-hero .meter {
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.sp-hero__name {
+  pointer-events: none;
+}
+
+.sky-note {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 15;
+  max-width: min(300px, calc(100vw - 24px));
+  padding: 8px 10px;
+  background: #000;
+  color: var(--ink);
+  font: 400 0.8rem/1.45 var(--label);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sky-note.is-on {
+  visibility: visible;
+}
+
+.lookback {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 15;
+  padding: 3px 8px;
+  background: #000;
+  color: var(--neon);
+  font: 400 0.74rem/1.4 var(--label);
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.lookback.is-on {
+  opacity: 1;
+}
+
+.lookback[hidden] {
+  display: none;
+}
+
+@media (min-width: 720px) {
+  .lookback {
+    top: 50%;
+    left: auto;
+    right: 4px;
+    padding: 8px 3px;
+    writing-mode: vertical-rl;
+    translate: 0 -50%;
+  }
+}
+
+/* The name grows far past the screen edges on its way by. */
+html[data-world="real"] main {
+  overflow-x: clip;
+}
+
+/* Saying what the machine is */
+
+html[data-world="real"] .module__label {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+html[data-world="real"] .module__label > .module__cta {
+  padding: 12px 20px;
+  background: var(--neon);
+  color: #0b0a09;
+  font: 500 1rem/1 "IBM Plex Sans", sans-serif;
+}
+
+html[data-world="real"] .module__label > #module-status {
+  padding: 4px 8px;
+}
+
+.sp-hero__what {
+  max-width: 64ch;
+  margin: 14px auto 0;
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.sp-hero__what span,
+.sp-hero__hint {
+  padding: 3px 8px;
+  background: #000;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.sp-hero__hint {
+  width: fit-content;
+  margin-top: 12px;
+  font: 400 0.78rem/1.4 var(--label);
+  color: var(--muted);
+}
+
+.sp-hero__hint[hidden] {
+  display: none;
+}
+
+.console__intro {
+  max-width: 62ch;
+  font-size: 1.02rem;
+  line-height: 1.4;
+}
+
+.moment__really {
+  grid-column: 2;
+  margin-top: -8px;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: #c4bdb1;
+}
+
+.send__label {
+  font: 400 0.8rem/1.3 "IBM Plex Mono", monospace;
+  color: #c4bdb1;
+}
+
+.send__message {
+  min-height: 0;
+}
+
+/* Keeps Send on screen on short phones, however long the list above it is. */
+@media (max-width: 859px) {
+  .send {
+    position: sticky;
+    bottom: 0;
+    margin-inline: calc(var(--gutter) * -1);
+    padding: 12px var(--gutter);
+    background: #000;
+    border-top: 1px solid #ffffff22;
+  }
+}
+
+.sp-how {
+  margin-top: 8vh;
+}
+
+.sp-how > div {
+  display: grid;
+  gap: 4px 32px;
+  padding: 18px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.sp-how dt {
+  font: 400 0.82rem/1.5 var(--label);
+  color: var(--muted);
+}
+
+.sp-how dd {
+  max-width: 62ch;
+  font-size: 1.12rem;
+  line-height: 1.45;
+}
+
+.sp-how__limits dt {
+  color: var(--neon);
+}
+
+@media (min-width: 720px) {
+  .sp-how > div {
+    grid-template-columns: minmax(10rem, 1fr) 3fr;
+  }
+}
+
+.sp-jobs li {
+  padding: 34px 0 44px;
+  border-top: 1px solid var(--rule);
+}
+
+.sp-jobs__when {
+  font: 400 0.82rem/1.4 var(--label);
+  color: var(--neon);
+}
+
+.sp-jobs h3 {
+  margin: 12px 0 6px;
+  font-size: clamp(2.1rem, 6.2vw, 6.2rem);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.sp-jobs__role {
+  font: 400 0.92rem/1.4 var(--label);
+}
+
+.sp-jobs__detail {
+  max-width: 62ch;
+  margin-top: 18px;
+  font-size: 1.12rem;
+  line-height: 1.45;
+}
+
+.sp-credentials {
+  margin-top: 0;
+}
+
+.sp-top {
+  transition: transform 200ms var(--ease-out);
+}
+
+@media (min-width: 720px) {
+  .sp-top.is-tucked {
+    transform: translateY(-100%);
+  }
+}
+
+@media (max-width: 859px) {
+  .moments {
+    order: -1;
+  }
+
+  .send__message {
+    font-size: 1.3rem;
+  }
+}
+
+.send__count {
+  font: 400 0.8rem/1.4 "IBM Plex Mono", monospace;
+  color: #c4bdb1;
+}
+
+.send__count[hidden] {
+  display: none;
 }

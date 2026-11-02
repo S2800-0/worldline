@@ -32,3 +32,17 @@ magick out/paper_a.png -colorspace Gray -normalize +level 80%,100% \
 magick out/ground_a.png \( +clone -flop \) +append \( +clone -flip \) -append -quality 70 $P/alchemist/ground.webp
 # A real handwritten note found in the Rusconi book, for the Archivist.
 magick $S/rusconi.jpg -crop 1500x420+470+1240 +repage -resize 1100x -quality 76 $P/archivist/note.webp
+
+# Space: Hubble's Ultra Deep Field (NASA/ESA). Every point of light here is a real galaxy.
+mkdir -p $P/space
+N=source/nasa/GSFC_20171208_Archive_e001061.jpg
+magick $N -gravity center -crop 2000x2000+0+0 +repage -level 7%,100% -resize 2048x2048! out/field.png
+# One object that isn't NASA's. Credited as mine in CREDITS.md.
+magick -size 72x120 xc:none \
+  -fill '#17388f' -draw 'rectangle 6,14 66,118' \
+  -fill '#2b55c4' -draw 'rectangle 2,8 70,18' \
+  -fill '#9fc0ff' -draw 'rectangle 14,28 30,44 rectangle 42,28 58,44' \
+  -fill '#fff6d8' -draw 'rectangle 30,0 42,8' \
+  -background none -rotate 14 -blur 0x2 -resize 12.5% out/box.png
+magick out/field.png out/box.png -geometry +905+1190 -composite -quality 74 $P/space/field.webp
+magick $N -gravity center -crop 2000x1500+0+0 +repage -level 7%,100% -resize 1500x -evaluate multiply 0.32 -quality 62 $P/space/dim.webp
