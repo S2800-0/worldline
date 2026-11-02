@@ -172,6 +172,6 @@ const { world } = Astro.props;
   </main>
 
   <footer class="foot">
-    <p>Hosted on AWS Amplify. Hubble Ultra Deep Field: NASA/ESA. Point at it and the light bends. The time machine is a fan homage, not affiliated with the rights holders of anything.</p>
+    <p>Hosted on AWS Amplify. {import.meta.env.PUBLIC_COUNTER_URL && "The counter in the console runs on AWS Lambda and DynamoDB. "}Hubble Ultra Deep Field: NASA/ESA. Point at it and the light bends. The time machine is a fan homage, not affiliated with the rights holders of anything.</p>
   </footer>
 </Base>

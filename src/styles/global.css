@@ -1605,3 +1605,12 @@ html[data-world="real"] .module__label > #module-status {
     font-size: 1.3rem;
   }
 }
+
+.send__count {
+  font: 400 0.8rem/1.4 "IBM Plex Mono", monospace;
+  color: #c4bdb1;
+}
+
+.send__count[hidden] {
+  display: none;
+}

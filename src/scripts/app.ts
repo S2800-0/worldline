@@ -4,6 +4,7 @@ import { createWarp, type Warp } from "./warp";
 import { flight, startSky } from "./sky";
 import { BOX, type FieldObject } from "../data/field";
 import { sound } from "./sound";
+import { describeCounts, loadCounts, recordAttempt } from "./counter";
 
 interface Moment {
   id: string;
@@ -133,6 +134,7 @@ function openConsole() {
   loadShot();
   loadMask();
   loadField();
+  loadCounts().then(renderCount);
   // A late font would rewrap the next world's hero and move its meter mid-landing.
   for (const font of WORLD_FONTS) document.fonts.load(font).catch(() => {});
   if (reducedMotion()) {
@@ -148,8 +150,16 @@ function selected(): Moment {
   return moments.find((m) => m.id === value) ?? moments[1];
 }
 
+function renderCount() {
+  const line = document.querySelector<HTMLElement>("#send-count");
+  if (!line) return;
+  line.textContent = describeCounts(selected().id);
+  line.hidden = !line.textContent;
+}
+
 function renderMoment() {
   const moment = selected();
+  renderCount();
   const dial = document.querySelector<HTMLElement>("#dial");
   dial?.style.setProperty("--dial-angle", `${moment.angle}deg`);
   document.querySelector("#send-message")!.textContent = moment.message;
@@ -775,6 +785,7 @@ function setup() {
   document.querySelector("#console-form")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const moment = selected();
+    if (!(moment.target && moment.target === location.pathname)) recordAttempt(moment.id).then(renderCount);
     if (moment.refusal) {
       const refusal = document.querySelector<HTMLElement>("#send-refusal")!;
       refusal.hidden = false;
